@@ -2,8 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+
     <!-- Camera permission -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Camera feature declaration -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -16,13 +20,14 @@
         android:theme="@style/Theme.Attendence"
         tools:targetApi="31">
 
-        <activity
-            android:name=".MainActivity"
+        <activity android:name="com.example.attendence.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
+
 </manifest>

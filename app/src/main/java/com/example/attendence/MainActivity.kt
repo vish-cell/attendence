@@ -1,5 +1,6 @@
 package com.example.attendence
 
+
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,12 +13,18 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import okhttp3.*
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var imageView: ImageView
     private lateinit var captureButton: Button
     private lateinit var uploadButton: Button
+    private var capturedImageFile: File? = null
 
     companion object {
         const val CAMERA_REQUEST_CODE = 100
@@ -42,10 +49,11 @@ class MainActivity : AppCompatActivity() {
             openCamera()
         }
 
-        // Handle the upload button (placeholder, later we send the image to API)
+        // Set click listener to upload image
         uploadButton.setOnClickListener {
-            // Code to upload image to an API
-            Toast.makeText(this, "Uploading image...", Toast.LENGTH_SHORT).show()
+            capturedImageFile?.let {
+                uploadImage(it)
+            } ?: Toast.makeText(this, "No image to upload", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -64,7 +72,58 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
             val photo: Bitmap = data?.extras?.get("data") as Bitmap
             imageView.setImageBitmap(photo)
+
+            // Save bitmap to file
+            capturedImageFile = saveBitmapToFile(photo)
         }
+    }
+
+    // Method to save bitmap to a file
+    private fun saveBitmapToFile(bitmap: Bitmap): File? {
+        val file = File(getExternalFilesDir(null), "captured_image.png")
+        return try {
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            file
+        } catch (e: IOException) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    // Function to upload image
+    private fun uploadImage(file: File) {
+        val client = OkHttpClient()
+
+        // Create RequestBody for the file using asRequestBody() method
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", file.name, file.asRequestBody()) // Correct usage of asRequestBody()
+            .build()
+
+        val request = Request.Builder()
+            .url("http://192.168.1.11:3000/upload") // Use 10.0.2.2 for localhost in Android Emulator
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Upload failed: $e", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                runOnUiThread {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@MainActivity, "Image uploaded successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "Upload failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        })
     }
 
     // Handle permission result
